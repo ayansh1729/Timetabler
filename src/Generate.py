@@ -1,61 +1,54 @@
-from itertools import permutations
+import itertools
 from FacultyList import FacultyList
 from Timetable import Timetable
 
-class TimetableManager:
-    def __init__(self, name, faculty_keys):
-        self.name = name
-        self.timetable = Timetable()
-        self.current_permutation = 0
-        self.permutations = list(permutations(self.timetable.time_slots[:-1])) 
-        self.faculty_keys = faculty_keys
+class GenerateTimetable:
+    def __init__(self, faculty_list):
+        self.faculty_list = FacultyList(faculty_list)
+        self.timetables = self._generate_timetables()
 
-    def generate_next_permutation(self):
-        if self.current_permutation < len(self.permutations):
-            perm = self.permutations[self.current_permutation]
-            self.current_permutation += 1
-            
-            self.timetable = Timetable()
-            for day_index, day in enumerate(self.timetable.days):
-                for slot_index, time_slot in enumerate(perm):
-                    faculty_key = list(self.faculty_keys.keys())[day_index % len(self.faculty_keys)]
-                    self.timetable.add_course(day, time_slot, f'{faculty_key} Course {slot_index + 1}')
+    def _generate_timetables(self):
+        faculty_dict = self.faculty_list.get_faculty_dict()
+        timetables = []
+        
+        for course, faculty in faculty_dict.items():
+            faculty_permutations = list(itertools.permutations(faculty))
+            for perm in faculty_permutations:
+                perm_list = list(perm)  # Convert tuple to list
+                timetable = Timetable()
+                for day, time_slot in zip(timetable.days, timetable.time_slots[:-1]):
+                    if perm_list:
+                        faculty_member = perm_list.pop(0)
+                        timetable.add_course(day, time_slot, faculty_member['unique_key'])
+                timetables.append(timetable)
+        return timetables
+
+    def next_permutation(self):
+        if hasattr(self, 'timetables') and self.timetables:
+            return self.timetables.pop(0)
         else:
-            print("No more permutations available.")
+            return None
 
-    def print_timetable(self):
-        print(f"Timetable: {self.name}")
-        self.timetable.print_timetable()
-        print()
+    def get_all_permutations(self):
+        return self.timetables
 
-def generate_timetables(faculty_list):
-    faculty_keys = faculty_list.get_faculty_keys()
-    department_faculty = faculty_list.get_department_faculty()
+# Sample faculty data
+faculty_data = [
+    ('Dr. Smith', 5, 'Differential Equations', 'Y1D1, Y2D1, Y3D1, Y4D1, Y1D2'),
+    ('Prof. Johnson', 3, 'Algebra', 'Y1D2, Y2D2, Y3D2'),
+    ('Dr. Brown', 4, 'Calculus', 'Y1D3, Y2D3, Y3D3, Y4D3'),
+    ('Dr. White', 2, 'Geometry', 'Y1D1, Y2D1'),
+    ('Ms. Black', 6, 'Statistics', 'Y1D2, Y2D2, Y3D2, Y4D2, Y1D3, Y2D3')
+]
 
-    # Define years
-    years = ['Year1', 'Year2', 'Year3', 'Year4']
-    
-    managers = []
-    
-    for year in years:
-        for dept, faculty_info in department_faculty.items():
-            name = f'{year} - {dept}'
-            faculty_keys_for_dept = {name: key for name, _, key in faculty_info}
-            manager = TimetableManager(name, faculty_keys_for_dept)
-            managers.append(manager)
+# Create GenerateTimetable object
+generate_timetable = GenerateTimetable(faculty_data)
 
-    for manager in managers:
-        manager.generate_next_permutation()
-        manager.print_timetable()
+# Get and print the next permutation
+next_perm = generate_timetable.next_permutation()
+if next_perm:
+    next_perm.print_timetable()
 
-if __name__ == "__main__":
-    faculty_data = [
-        ('Dr. Smith', 5, 'Dept1'),
-        ('Prof. Johnson', 3, 'Dept2'),
-        ('Dr. Brown', 4, 'Dept3'),
-        ('Dr. White', 2, 'Dept1'),
-        ('Ms. Black', 6, 'Dept2')
-    ]
-    faculty_list = FacultyList(faculty_data)
-
-    generate_timetables(faculty_list)
+# Print all remaining permutations
+for perm in generate_timetable.get_all_permutations():
+    perm.print_timetable()

@@ -1,53 +1,35 @@
-class Timetable:
-    def __init__(self):
-        self.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        self.time_slots = [
-            '9:00-10:00', '10:00-11:00', '11:00-12:00',
-            '12:00-1:00 (Recess)', '1:00-2:00', '2:00-3:00',
-            '3:00-4:00', '4:00-5:00'
-        ]
-        self.timetable = {day: [''] * len(self.time_slots) for day in self.days}
-    
-    def add_course(self, day, time_slot, course):
-        if day in self.days and time_slot in self.time_slots:
-            time_index = self.time_slots.index(time_slot)
-            self.timetable[day][time_index] = course
+class ValidateTimetables:
+    def __init__(self, timetables):
+        self.timetables = timetables
+
+    def check_conflicts(self):
+        faculty_schedule = {}
+        for timetable in self.timetables:
+            for day, time_slots in timetable.timetable.items():
+                for time_index, faculty_id in enumerate(time_slots):
+                    if faculty_id and faculty_id != '12:00-1:00 (Recess)':
+                        time_slot = timetable.time_slots[time_index]
+                        if faculty_id not in faculty_schedule:
+                            faculty_schedule[faculty_id] = {}
+                        if time_slot not in faculty_schedule[faculty_id]:
+                            faculty_schedule[faculty_id][time_slot] = []
+                        faculty_schedule[faculty_id][time_slot].append(day)
+        
+        conflicts = []
+        for faculty_id, schedule in faculty_schedule.items():
+            for time_slot, days in schedule.items():
+                if len(days) > 1:
+                    conflicts.append({
+                        'faculty_id': faculty_id,
+                        'time_slot': time_slot,
+                        'days': days
+                    })
+        
+        return conflicts
+
+    def validate(self):
+        conflicts = self.check_conflicts()
+        if conflicts:
+            return False, conflicts
         else:
-            print("Invalid day or time slot")
-
-    def get_schedule(self):
-        schedule = []
-        for day in self.days:
-            for time_index, time_slot in enumerate(self.time_slots):
-                if self.timetable[day][time_index]:
-                    schedule.append((day, time_slot, self.timetable[day][time_index]))
-        return schedule
-
-def load_timetables():
-    timetables = []
-    return timetables
-
-def validate_timetables(timetables):
-    faculty_schedule = {}
-
-    for timetable in timetables:
-        schedule = timetable.get_schedule()
-        for day, time_slot, course in schedule:
-            faculty_key = course.split()[0] 
-            
-            unique_identifier = (faculty_key, day, time_slot)
-            
-            if unique_identifier in faculty_schedule:
-                print(f"Conflict detected: {unique_identifier} in {faculty_schedule[unique_identifier]} and {timetable}")
-                return False
-            
-            faculty_schedule[unique_identifier] = timetable
-
-    print("All timetables are valid.")
-    return True
-
-if __name__ == "__main__":
-    timetables = load_timetables()
-
-    validate_timetables(timetables)
-
+            return True, None
