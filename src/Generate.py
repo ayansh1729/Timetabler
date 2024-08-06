@@ -1,54 +1,92 @@
-import itertools
+import pandas as pd
+import copy
+from Table import Table
 from FacultyList import FacultyList
-from Timetable import Timetable
 
-class GenerateTimetable:
-    def __init__(self, faculty_list):
-        self.faculty_list = FacultyList(faculty_list)
-        self.timetables = self._generate_timetables()
+class TimetableGenerator:
+    def __init__(self, department_name, faculty_data):
+        self.department_name = department_name
+        self.faculty_list = self.filter_faculty_data(faculty_data, department_name)
+        self.timetables = []
+        self.current_index = 0  # To keep track of the next permutation
+        self.generate_timetables(0, 0, Table(), self.faculty_list.get_faculty_dict())
 
-    def _generate_timetables(self):
-        faculty_dict = self.faculty_list.get_faculty_dict()
-        timetables = []
-        
-        for course, faculty in faculty_dict.items():
-            faculty_permutations = list(itertools.permutations(faculty))
-            for perm in faculty_permutations:
-                perm_list = list(perm)  # Convert tuple to list
-                timetable = Timetable()
-                for day, time_slot in zip(timetable.days, timetable.time_slots[:-1]):
-                    if perm_list:
-                        faculty_member = perm_list.pop(0)
-                        timetable.add_course(day, time_slot, faculty_member['unique_key'])
-                timetables.append(timetable)
-        return timetables
+    def filter_faculty_data(self, faculty_data, department_name):
+        filtered_data = []
+        for name, num_classes, course_name, courses in faculty_data:
+            if department_name in courses:
+                filtered_data.append((name, num_classes, course_name, department_name))
+        return FacultyList(filtered_data)
+
+    def generate_timetables(self, i, j, table, faculty_dict):
+        if len(self.timetables) >= 5000:
+            return
+        if i >= len(table.days):
+            self.timetables.append(copy.deepcopy(table))
+            return
+
+        if j >= len(table.time_slots):
+            self.generate_timetables(i + 1, 0, table, faculty_dict)  # Move to the next day
+            return
+
+        # Try each faculty for the current slot
+        for course, faculty_list in faculty_dict.items():
+            for idx, faculty in enumerate(faculty_list):
+                if faculty['num_classes'] > 0:
+                    # Check if this faculty already has a class scheduled for the current day
+                    if any(faculty['faculty_name'] == entry for entry in table.timetable[table.days[i]]):
+                        continue  # Skip this faculty if already scheduled for the current day
+
+                    # Try adding this faculty's course to the timetable
+                    if table.add_course(table.days[i], table.time_slots[j], faculty['faculty_name']) == 0:
+                        # Decrease the number of classes for this faculty
+                        faculty['num_classes'] -= 1
+
+                        # Recursively generate timetables with this faculty's course added
+                        self.generate_timetables(i, j + 1, table, faculty_dict)
+
+                        # Remove the course and reset the faculty list
+                        table.remove_course(table.days[i], table.time_slots[j])
+                        faculty['num_classes'] += 1
+
+        # Try the next slot without adding any course
+        self.generate_timetables(i, j + 1, table, faculty_dict)
 
     def next_permutation(self):
-        if hasattr(self, 'timetables') and self.timetables:
-            return self.timetables.pop(0)
+        if self.current_index < len(self.timetables):
+            timetable = self.timetables[self.current_index]
+            self.current_index += 1
+            return timetable
         else:
-            return None
+            return None  # No more permutations available
 
-    def get_all_permutations(self):
-        return self.timetables
+    def save_timetables(self, filename='timetables.pkl'):
+        with open(filename, 'wb') as f:
+            import pickle
+            pickle.dump(self.timetables, f)
 
-# Sample faculty data
-faculty_data = [
-    ('Dr. Smith', 5, 'Differential Equations', 'Y1D1, Y2D1, Y3D1, Y4D1, Y1D2'),
-    ('Prof. Johnson', 3, 'Algebra', 'Y1D2, Y2D2, Y3D2'),
-    ('Dr. Brown', 4, 'Calculus', 'Y1D3, Y2D3, Y3D3, Y4D3'),
-    ('Dr. White', 2, 'Geometry', 'Y1D1, Y2D1'),
-    ('Ms. Black', 6, 'Statistics', 'Y1D2, Y2D2, Y3D2, Y4D2, Y1D3, Y2D3')
-]
+    def load_timetables(self, filename='timetables.pkl'):
+        with open(filename, 'rb') as f:
+            import pickle
+            self.timetables = pickle.load(f)
+            self.current_index = 0  # Reset the index after loading
 
-# Create GenerateTimetable object
-generate_timetable = GenerateTimetable(faculty_data)
+# Example usage
+if __name__ == "__main__":
+    faculty_data = [
+        ('Dr. Smith', 5, 'Differential Equations', 'Y1D1, Y2D1, Y3D1, Y4D1, Y1D2'),
+        ('Prof. Johnson', 3, 'Algebra', 'Y1D2, Y2D2, Y3D2'),
+        ('Dr. Brown', 4, 'Calculus', 'Y1D3, Y2D3, Y3D3, Y4D3'),
+        ('Dr. White', 2, 'Geometry', 'Y1D1, Y2D1'),
+        ('Ms. Black', 6, 'Statistics', 'Y1D2, Y2D2, Y3D2, Y4D2, Y1D3, Y2D3')
+    ]
 
-# Get and print the next permutation
-next_perm = generate_timetable.next_permutation()
-if next_perm:
-    next_perm.print_timetable()
+    generator = TimetableGenerator('Y1D2', faculty_data)
+    next_timetable = generator.next_permutation()
 
-# Print all remaining permutations
-for perm in generate_timetable.get_all_permutations():
-    perm.print_timetable()
+    # if next_timetable:
+    #     next_timetable.print_timetable()
+    # else:
+    #     print("No more timetables available.")
+    for i in range(10):
+        generator.next_permutation().print_timetable()

@@ -1,3 +1,5 @@
+import pandas as pd
+
 class FacultyList:
     def __init__(self, faculty_data):
         self.faculty_data = faculty_data
@@ -35,3 +37,27 @@ class FacultyList:
 
     def get_faculty_dict(self):
         return self.faculty_dict
+
+    def print_faculty_dict(self):
+        print("Faculty Dictionary:")
+        for course, faculty_list in self.faculty_dict.items():
+            print(f"\nCourse: {course}")
+            for faculty in faculty_list:
+                print(f"  - Unique Key: {faculty['unique_key']}")
+                print(f"    Faculty Name: {faculty['faculty_name']}")
+                print(f"    Course Name: {faculty['course_name']}")
+                print(f"    Number of Classes: {faculty['num_classes']}")
+                print()
+
+# Faculty data
+faculty_data = [
+    ('Dr. Smith', 5, 'Differential Equations', 'Y1D1, Y2D1, Y3D1, Y4D1, Y1D2'),
+    ('Prof. Johnson', 3, 'Algebra', 'Y1D2, Y2D2, Y3D2'),
+    ('Dr. Brown', 4, 'Calculus', 'Y1D3, Y2D3, Y3D3, Y4D3'),
+    ('Dr. White', 2, 'Geometry', 'Y1D1, Y2D1'),
+    ('Ms. Black', 6, 'Statistics', 'Y1D2, Y2D2, Y3D2, Y4D2, Y1D3, Y2D3')
+]
+
+# Initialize FacultyList and print the dictionary using the class method
+data = FacultyList(faculty_data)
+data.print_faculty_dict()
